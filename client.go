@@ -1,13 +1,17 @@
 package main
 
-struct Client {
-	Key string,
-	Permissions string,
-	IPAddress string,
+import (
+	"database/sql"
+)
+
+type Client struct {
+	Key string
+	Permissions string
+	IPAddress string
 }
 
 func (creds *DbCreds) createClientTable() error{
-	b := pgdb.CreateSession(req.Creds)
+	db := CreateSession(creds)
 	defer db.Close()
 
 	sqlQuery := `CREATE TABLE client (
@@ -34,12 +38,12 @@ func (creds *DbCreds) findClient(key string) (*Client, error) {
 		return nil, err
 	}
 
-	return d, nil
+	return c, nil
 }
 
 
-func (creds *DbCreds) insertUpdateClient(id string) (*Client, error) {
-	b := pgdb.CreateSession(req.Creds)
+func (creds *DbCreds) insertUpdateClient(c *Client) error {
+	db := CreateSession(creds)
 	defer db.Close()
 
 	sqlQuery := `insert into client VALUES ($1, $2, $3) ON DUPLICATE KEY UPDATE PERMISSIONS=$2, IPADDRESS=$3`

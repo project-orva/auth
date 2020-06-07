@@ -1,19 +1,22 @@
 package main
 
 import (
+	"fmt"
+	"encoding/json"
 	"net/http"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
+	"github.com/dgrijalva/jwt-go"
 )
 
-struct DispatchResponse {
+type DispatchResponse struct {
 	IdentityToken string `json:"identity_token"`
 	IAT uint64 `json:"iat"`
-	EAT uint64 `json:"eat"`
 }
 
-func dispatch(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(req.Body)
+func (ctx *RequestContext) dispatch(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
 
     resource := &Resource{}
 	err := decoder.Decode(&resource)
@@ -24,26 +27,44 @@ func dispatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// validate resource
-	res, err := findResource(resource.ID)
+	res, err := ctx.Creds.findResource(resource.ID)
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	bcryptErr := bcrypt.CompareHashAndPassword([]byte(res.Key), []byte(resource.Key))
-	// output if correct
-	if bcryptErr != nil {
 
+	if bcryptErr != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+	}
+
+	token, jwtErr := jwt.Parse(res.Key, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+
+		return ctx.JWTSecret, nil
+	})
+
+	if jwtErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)		
+	}
+	
+	signedStr, signErr := token.SigningString()
+
+	if signErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 	}
 
 	json.NewEncoder(w).Encode(&DispatchResponse{
-		IdentityToken: 0,
-		IAT: 0
+		IdentityToken: signedStr,
+		IAT: uint64(time.Now().Unix()),
 	})
 }
 
-func validate(w http.ResponseWriter, r *http.Request) {
-
+func  (ctx *RequestContext) validate(w http.ResponseWriter, r *http.Request) {
+	
 }
 
 func registerResource(w http.ResponseWriter, r *http.Request) {

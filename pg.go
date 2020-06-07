@@ -1,11 +1,10 @@
-package pg
+package main
 
 import (
 	"database/sql"
 	"fmt"
 
 	_ "github.com/lib/pq" // comment justifing it.. lol
-	"github.com/truauth/truauth/pkg/settings"
 )
 
 type DbCreds struct {
@@ -24,11 +23,4 @@ func CreateSession(creds *DbCreds) *sql.DB {
 	}
 
 	return db
-}
-
-func FetchCreds() *DbCreds {
-	creds := &DbCreds{}
-	settings.Init(creds, "aws-rds")
-
-	return creds
 }

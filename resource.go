@@ -1,12 +1,16 @@
 package main
 
-struct Resource {
+import (
+	"database/sql"
+)
+
+type Resource struct {
 	ID string `json:"resource_id"`
 	Key string `json:"resource_key"`
 }
 
 func (creds *DbCreds) createResourceTable() error{
-	b := pgdb.CreateSession(req.Creds)
+	db := CreateSession(creds)
 	defer db.Close()
 
 	sqlQuery := `CREATE TABLE resource (
@@ -26,22 +30,21 @@ func (creds *DbCreds) findResource(id string) (*Resource, error) {
 	qry := `select * from resource where id=$1`
 	row := db.QueryRow(qry, id)
 
-	c := &Client{}
-
-	if err := row.Scan(&c.ID, &c.Key, &c.Type); err != nil && err != sql.ErrNoRows {
+	resource := &Resource{}
+	if err := row.Scan(&resource.ID, &resource.Key); err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 
-	return d, nil
+	return resource, nil
 }
 
 
-func (creds *DbCreds) insertUpdateResource(id string) (*Client, error) {
-	b := pgdb.CreateSession(req.Creds)
+func (creds *DbCreds) insertUpdateResource(resource *Resource) error {
+	db := CreateSession(creds)
 	defer db.Close()
 
-	sqlQuery := `insert into resource VALUES ($1, $2, $3) ON DUPLICATE KEY UPDATE KEY=$2, TYPE=$3`
-	_, err := db.Exec(sqlQuery, c.Key, c.Permissions, c.IPAddress)
+	sqlQuery := `insert into resource VALUES ($1, $2) ON DUPLICATE KEY UPDATE KEY=$2`
+	_, err := db.Exec(sqlQuery, resource.ID, resource.Key)
 
 	return err
 }

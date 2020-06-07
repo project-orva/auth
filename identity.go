@@ -1,13 +1,16 @@
 package main
 
-struct Identity {
-	Token string,
-	Issued uint64,
+import (
+	"database/sql"
+)
+
+type Identity struct {
+	Token string
+	Issued uint64
 }
 
-
 func (creds *DbCreds) createIdentityTable() error{
-	b := pgdb.CreateSession(req.Creds)
+	db := CreateSession(creds)
 	defer db.Close()
 
 	sqlQuery := `CREATE TABLE identity (
@@ -20,20 +23,19 @@ func (creds *DbCreds) createIdentityTable() error{
 }
 
 
-func (creds *DbCreds) findIdentity(token string) (*Client, error) {
+func (creds *DbCreds) findIdentity(token string) (*Identity, error) {
 	db := CreateSession(creds)
 	defer db.Close()
 
 	qry := `select * from identity where token = $1`
-	row := db.QueryRow(qry, id)
+	row := db.QueryRow(qry, token)
 
-	c := &Client{}
-
-	if err := row.Scan(&c.Token, &c.Issued); err != nil && err != sql.ErrNoRows {
+	identity := &Identity{}
+	if err := row.Scan(&identity.Token, &identity.Issued); err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 
-	return d, nil
+	return identity, nil
 }
 
 
@@ -41,7 +43,7 @@ func (creds *DbCreds) deleteIndentity(token string) (error) {
 	db := CreateSession(creds)
 
 	qry := `DELETE FROM identity where token = $1`
-	_, err := db.Exec(sqlQuery, token)
+	_, err := db.Exec(qry, token)
 
 	return err
 }
