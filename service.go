@@ -1,13 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"encoding/json"
 	"net/http"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
-	"github.com/dgrijalva/jwt-go"
 )
 
 type DispatchResponse struct {
@@ -39,32 +37,47 @@ func (ctx *RequestContext) dispatch(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}
 
-	token, jwtErr := jwt.Parse(res.Key, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		}
-
-		return ctx.JWTSecret, nil
-	})
-
-	if jwtErr != nil {
-		w.WriteHeader(http.StatusInternalServerError)		
-	}
-	
-	signedStr, signErr := token.SigningString()
-
+	token, signErr := createJWTToken(resource.ID, ctx.JWTSecret)
 	if signErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 
 	json.NewEncoder(w).Encode(&DispatchResponse{
-		IdentityToken: signedStr,
+		IdentityToken: token,
 		IAT: uint64(time.Now().Unix()),
 	})
 }
 
+type ValidationRequest struct {
+	ClientKey string `json:"client_key"`
+	IdentityToken string `json:"identity_token"`
+}
+
+type ValidationResponse struct {
+	Valid bool `json:"valid"`
+}
+
 func  (ctx *RequestContext) validate(w http.ResponseWriter, r *http.Request) {
-	
+	decoder := json.NewDecoder(r.Body)
+
+    request := &ValidationRequest{}
+	err := decoder.Decode(&request)
+		
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// verify that the client is a valid one
+	_, findErr := ctx.Creds.findClient(request.ClientKey)
+	if findErr != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+	}
+
+	// verify the identity token
+	json.NewEncoder(w).Encode(&ValidationResponse{
+		Valid: isJWTValid(request.IdentityToken, ctx.JWTSecret),
+	})
 }
 
 func registerResource(w http.ResponseWriter, r *http.Request) {
