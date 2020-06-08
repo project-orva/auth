@@ -39,9 +39,9 @@ Everything is a resource, from people to devices.. e.g for auth a user would be 
 #### input:
 ```json
 {
+    "client_key": "<key of the client making the request>",
     "resource_id": "<id of the resource>",
     "resource_key": "<key of the resource>",
-    "resource_type": "<type of resource>",
 }
 ```
 Note: during this step, all provided keys get bcrypt, if key is not given one will be assigned to the resource automatically.

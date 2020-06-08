@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
+	"github.com/google/uuid"
 )
 
 type DispatchResponse struct {
@@ -69,19 +70,68 @@ func  (ctx *RequestContext) validate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// verify that the client is a valid one
-	_, findErr := ctx.Creds.findClient(request.ClientKey)
-	if findErr != nil {
-		w.WriteHeader(http.StatusUnauthorized)
+	client, findErr := ctx.Creds.findClient(request.ClientKey)
+	if findErr != nil || len(client.IPAddress) == 0 {
+		w.WriteHeader(http.StatusUnauthorized)		
 	}
+	
+	// @@@ match the client IP with the incoming IP.
 
-	// verify the identity token
 	json.NewEncoder(w).Encode(&ValidationResponse{
+		// verify the identity token
 		Valid: isJWTValid(request.IdentityToken, ctx.JWTSecret),
 	})
 }
 
-func registerResource(w http.ResponseWriter, r *http.Request) {
+type RegisterResourceRequest struct {
+	ClientKey string `json:"client_key"`
+	ResourceID string `json:"resource_id"`
+	ResourceKey string `json:"resource_key"`
+}
 
+type RegisterResourceResponse struct {
+	Valid bool `json:"valid"`
+	ResourceKey string `json:"resource_key"`
+}
+
+func (ctx *RequestContext) registerResource(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+
+	request := &RegisterResourceRequest{}
+	err := decoder.Decode(&request)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
+	client, err := ctx.Creds.findClient(request.ClientKey)
+	if err != nil || len(client.IPAddress) == 0 {
+		w.WriteHeader(http.StatusUnauthorized)
+	}
+	// @@@ match the client IP with the incoming IP.
+	
+	var resourceKey string
+	if len(request.ResourceKey) == 0 {
+		key := uuid.New()
+		resourceKey = key.String()
+	} else {
+		resourceKey = request.ResourceKey
+	}
+	
+	resource := &Resource{
+		ID: request.ResourceID,
+		Key: request.ResourceKey,
+	}
+
+	insertErr := ctx.Creds.insertUpdateResource(resource)
+	if insertErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	json.NewEncoder(w).Encode(&RegisterResourceResponse{
+		Valid: true,
+		ResourceKey: resourceKey,
+	})
 }
 
 func registerClient(w http.ResponseWriter, r *http.Request) {
