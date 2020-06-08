@@ -50,7 +50,7 @@ func main() {
 	mux.Handle("/dispatch", handlePost(http.HandlerFunc(ctx.dispatch)))
 	mux.Handle("/validate", handlePost(http.HandlerFunc(ctx.validate)))
 	mux.Handle("/register-resource", handlePost(http.HandlerFunc(ctx.registerResource)))
-	mux.Handle("/register-client", handlePost(http.HandlerFunc(registerClient)))
+	mux.Handle("/register-client", handlePost(http.HandlerFunc(ctx.registerClient)))
 	
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }

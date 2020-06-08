@@ -36,11 +36,13 @@ func (ctx *RequestContext) dispatch(w http.ResponseWriter, r *http.Request) {
 
 	if bcryptErr != nil {
 		w.WriteHeader(http.StatusUnauthorized)
+		return
 	}
 
 	token, signErr := createJWTToken(resource.ID, ctx.JWTSecret)
 	if signErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	json.NewEncoder(w).Encode(&DispatchResponse{
@@ -72,7 +74,8 @@ func  (ctx *RequestContext) validate(w http.ResponseWriter, r *http.Request) {
 	// verify that the client is a valid one
 	client, findErr := ctx.Creds.findClient(request.ClientKey)
 	if findErr != nil || len(client.IPAddress) == 0 {
-		w.WriteHeader(http.StatusUnauthorized)		
+		w.WriteHeader(http.StatusUnauthorized)
+		return
 	}
 	
 	// @@@ match the client IP with the incoming IP.
@@ -102,11 +105,13 @@ func (ctx *RequestContext) registerResource(w http.ResponseWriter, r *http.Reque
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
 	client, err := ctx.Creds.findClient(request.ClientKey)
 	if err != nil || len(client.IPAddress) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
+		return
 	}
 	// @@@ match the client IP with the incoming IP.
 	
@@ -126,6 +131,7 @@ func (ctx *RequestContext) registerResource(w http.ResponseWriter, r *http.Reque
 	insertErr := ctx.Creds.insertUpdateResource(resource)
 	if insertErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	json.NewEncoder(w).Encode(&RegisterResourceResponse{
@@ -134,6 +140,40 @@ func (ctx *RequestContext) registerResource(w http.ResponseWriter, r *http.Reque
 	})
 }
 
-func registerClient(w http.ResponseWriter, r *http.Request) {
-	
+type RegisterClientRequest struct {
+	Permissions string `json:"permissions"`
+}
+
+type RegisterClientResponse struct {
+	Key string `json:"key"`
+}
+
+func (ctx *RequestContext) registerClient(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+
+	request := &RegisterClientRequest{}
+	err := decoder.Decode(&request)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
+	key := uuid.New()
+	resourceKey := key.String()
+
+	client := &Client{
+		Key: resourceKey,
+		Permissions: request.Permissions,
+		IPAddress: r.RemoteAddr,
+	}
+
+	insertErr := ctx.Creds.insertUpdateClient(client)
+	if insertErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(&RegisterClientResponse{
+		Key: resourceKey,
+	})
 }

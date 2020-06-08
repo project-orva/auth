@@ -69,6 +69,5 @@ This endpoint is restricted to whitelisted adresses.
 ```json
 {
     "key": "<resource key>",
-    "iat": "<issued on>"
 }
 ```
