@@ -25,7 +25,7 @@ type RequestContext struct {
 }
 
 func main() {
-	err := godotenv.Load(".env")
+	err := godotenv.Load("../.env")
 	if err != nil {
 		panic("env isn't being set correctly")
 	}
