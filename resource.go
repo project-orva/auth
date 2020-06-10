@@ -13,11 +13,14 @@ func (creds *DbCreds) createResourceTable() error{
 	db := CreateSession(creds)
 	defer db.Close()
 
-	sqlQuery := `CREATE TABLE resource (
+	sqlQuery := `CREATE TABLE IF NOT EXISTS resource (
 		ID CHAR(36) PRIMARY KEY UNIQUE NOT NULL,
-		KEY TEXT NOT NULL,
+		KEY TEXT NOT NULL
 	)`
 	_, err := db.Exec(sqlQuery)
+	if err != nil {
+		panic(err)
+	}
 
 	return err
 }
@@ -43,7 +46,14 @@ func (creds *DbCreds) insertUpdateResource(resource *Resource) error {
 	db := CreateSession(creds)
 	defer db.Close()
 
-	sqlQuery := `insert into resource VALUES ($1, $2) ON DUPLICATE KEY UPDATE KEY=$2`
+	sqlQuery := `INSERT INTO RESOURCE (
+		ID,
+		KEY
+	) VALUES (
+		$1, $2
+	) ON CONFLICT (ID) DO UPDATE
+		SET KEY = $2
+	`
 	_, err := db.Exec(sqlQuery, resource.ID, resource.Key)
 
 	return err

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"github.com/joho/godotenv"
-	"fmt"
 )
 
 func heath(w http.ResponseWriter, r *http.Request) {
@@ -42,8 +41,10 @@ func main() {
 		},
 	}
 
-	fmt.Println(ctx)
-	
+	ctx.Creds.createClientTable()
+	ctx.Creds.createResourceTable()	
+	ctx.Creds.createIdentityTable()
+
 	mux := http.NewServeMux()
 
 	mux.Handle("/", http.HandlerFunc(heath))
@@ -52,5 +53,5 @@ func main() {
 	mux.Handle("/register-resource", handlePost(http.HandlerFunc(ctx.registerResource)))
 	mux.Handle("/register-client", handlePost(http.HandlerFunc(ctx.registerClient)))
 	
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	log.Fatal(http.ListenAndServe(":5258", mux))
 }

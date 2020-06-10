@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"github.com/dgrijalva/jwt-go"
 )
 
@@ -21,4 +22,12 @@ func isJWTValid(signedToken string, secret string) bool {
 	})
 
 	return token.Valid
+}
+
+func parseRemote(address string) string {
+	if strings.Contains(address, "[::1]") {
+		return "local"
+	}
+
+	return address
 }

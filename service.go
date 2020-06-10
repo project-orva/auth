@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
-
+	"fmt"
 	"golang.org/x/crypto/bcrypt"
 	"github.com/google/uuid"
 )
@@ -28,13 +28,15 @@ func (ctx *RequestContext) dispatch(w http.ResponseWriter, r *http.Request) {
 	// validate resource
 	res, err := ctx.Creds.findResource(resource.ID)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		fmt.Println(err)
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-
+	
 	bcryptErr := bcrypt.CompareHashAndPassword([]byte(res.Key), []byte(resource.Key))
 
 	if bcryptErr != nil {
+		fmt.Println(bcryptErr)
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -45,10 +47,19 @@ func (ctx *RequestContext) dispatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(&DispatchResponse{
+	jData, marshalErr := json.Marshal(&DispatchResponse{
 		IdentityToken: token,
 		IAT: uint64(time.Now().Unix()),
 	})
+
+	if marshalErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(200)
+	w.Write(jData)
+
 }
 
 type ValidationRequest struct {
@@ -72,8 +83,10 @@ func  (ctx *RequestContext) validate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// verify that the client is a valid one
-	client, findErr := ctx.Creds.findClient(request.ClientKey)
-	if findErr != nil || len(client.IPAddress) == 0 {
+	remoteAddr := parseRemote(r.RemoteAddr)
+	client, findErr := ctx.Creds.findClient(remoteAddr)
+
+	if findErr != nil || client.Key != request.ClientKey {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -102,18 +115,25 @@ func (ctx *RequestContext) registerResource(w http.ResponseWriter, r *http.Reque
 
 	request := &RegisterResourceRequest{}
 	err := decoder.Decode(&request)
-
+	
 	if err != nil {
+		fmt.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	client, err := ctx.Creds.findClient(request.ClientKey)
+	remoteAddr := parseRemote(r.RemoteAddr)
+
+	client, err := ctx.Creds.findClient(remoteAddr)
 	if err != nil || len(client.IPAddress) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	// @@@ match the client IP with the incoming IP.
+
+	if client.Key != request.ClientKey {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 	
 	var resourceKey string
 	if len(request.ResourceKey) == 0 {
@@ -122,14 +142,22 @@ func (ctx *RequestContext) registerResource(w http.ResponseWriter, r *http.Reque
 	} else {
 		resourceKey = request.ResourceKey
 	}
-	
+
+	keyHash, hashErr := bcrypt.GenerateFromPassword([]byte(resourceKey), bcrypt.DefaultCost)
+	if hashErr != nil {
+		fmt.Println(hashErr)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	resource := &Resource{
 		ID: request.ResourceID,
-		Key: request.ResourceKey,
+		Key: string(keyHash),
 	}
 
 	insertErr := ctx.Creds.insertUpdateResource(resource)
 	if insertErr != nil {
+		fmt.Println(insertErr)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -164,11 +192,12 @@ func (ctx *RequestContext) registerClient(w http.ResponseWriter, r *http.Request
 	client := &Client{
 		Key: resourceKey,
 		Permissions: request.Permissions,
-		IPAddress: r.RemoteAddr,
+		IPAddress: parseRemote(r.RemoteAddr),
 	}
 
 	insertErr := ctx.Creds.insertUpdateClient(client)
 	if insertErr != nil {
+		fmt.Println(insertErr)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

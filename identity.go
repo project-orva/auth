@@ -13,11 +13,14 @@ func (creds *DbCreds) createIdentityTable() error{
 	db := CreateSession(creds)
 	defer db.Close()
 
-	sqlQuery := `CREATE TABLE identity (
+	sqlQuery := `CREATE TABLE IF NOT EXISTS identity (
 		TOKEN CHAR(36) PRIMARY KEY UNIQUE NOT NULL,
-		ISSUED BIGINT NOT NULL,
+		ISSUED BIGINT NOT NULL
 	)`
 	_, err := db.Exec(sqlQuery)
+	if err != nil {
+		panic(err)
+	}
 
 	return err
 }
