@@ -29,5 +29,5 @@ func parseRemote(address string) string {
 		return "local"
 	}
 
-	return address
+	return strings.Split(address, ":")[0]
 }
