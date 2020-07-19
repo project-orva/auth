@@ -1,9 +1,5 @@
 package main
 
-import (
-	"database/sql"
-)
-
 type Identity struct {
 	Token string
 	Issued uint64
@@ -34,7 +30,7 @@ func (creds *DbCreds) findIdentity(token string) (*Identity, error) {
 	row := db.QueryRow(qry, token)
 
 	identity := &Identity{}
-	if err := row.Scan(&identity.Token, &identity.Issued); err != nil && err != sql.ErrNoRows {
+	if err := row.Scan(&identity.Token, &identity.Issued); err != nil {
 		return nil, err
 	}
 

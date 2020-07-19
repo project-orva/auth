@@ -27,7 +27,7 @@ func (ctx *RequestContext) dispatch(w http.ResponseWriter, r *http.Request) {
 
 	// validate resource
 	res, err := ctx.Creds.findResource(resource.ID)
-	if err != nil {
+	if (err != nil || res == nil) {
 		fmt.Println(err)
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -36,7 +36,7 @@ func (ctx *RequestContext) dispatch(w http.ResponseWriter, r *http.Request) {
 	bcryptErr := bcrypt.CompareHashAndPassword([]byte(res.Key), []byte(resource.Key))
 
 	if bcryptErr != nil {
-		fmt.Println(bcryptErr)
+		fmt.Println(bcryptErr, res, resource)
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -59,7 +59,6 @@ func (ctx *RequestContext) dispatch(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(200)
 	w.Write(jData)
-
 }
 
 type ValidationRequest struct {
@@ -71,7 +70,7 @@ type ValidationResponse struct {
 	Valid bool `json:"valid"`
 }
 
-func  (ctx *RequestContext) validate(w http.ResponseWriter, r *http.Request) {
+func (ctx *RequestContext) validate(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 
     request := &ValidationRequest{}
@@ -114,6 +113,8 @@ func (ctx *RequestContext) registerResource(w http.ResponseWriter, r *http.Reque
 	decoder := json.NewDecoder(r.Body)
 
 	request := &RegisterResourceRequest{}
+	// @@ verify that all fields are present in the request.
+
 	err := decoder.Decode(&request)
 	
 	if err != nil {

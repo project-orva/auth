@@ -1,9 +1,5 @@
 package main
 
-import (
-	"database/sql"
-)
-
 type Resource struct {
 	ID string `json:"resource_id"`
 	Key string `json:"resource_key"`
@@ -34,7 +30,7 @@ func (creds *DbCreds) findResource(id string) (*Resource, error) {
 	row := db.QueryRow(qry, id)
 
 	resource := &Resource{}
-	if err := row.Scan(&resource.ID, &resource.Key); err != nil && err != sql.ErrNoRows {
+	if err := row.Scan(&resource.ID, &resource.Key); err != nil {
 		return nil, err
 	}
 

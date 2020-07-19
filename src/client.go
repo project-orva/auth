@@ -1,9 +1,5 @@
 package main
 
-import (
-	"database/sql"
-)
-
 type Client struct {
 	Key string
 	Permissions string
@@ -38,7 +34,7 @@ func (creds *DbCreds) findClient(ip string) (*Client, error) {
 
 	c := &Client{}
 
-	if err := row.Scan(&c.IPAddress, &c.Key, &c.Permissions); err != nil && err != sql.ErrNoRows {
+	if err := row.Scan(&c.IPAddress, &c.Key, &c.Permissions); err != nil {
 		return nil, err
 	}
 
