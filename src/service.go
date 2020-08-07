@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
@@ -41,7 +42,11 @@ func (ctx *RequestContext) dispatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, signErr := createJWTToken(resource.ID, ctx.JWTSecret)
+	token, signErr := createJWTToken(
+		resource.ID,
+		ctx.JWTSecret,
+		res.Permissions,
+	)
 	if signErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -86,15 +91,25 @@ func (ctx *RequestContext) validate(w http.ResponseWriter, r *http.Request) {
 	client, findErr := ctx.Creds.findClient(remoteAddr)
 
 	if findErr != nil || client.Key != request.ClientKey {
+		fmt.Println("request key mismatch")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	
-	// @@@ match the client IP with the incoming IP.
+
+	// match the client IP with the incoming IP.
+	claims, err := parseJWT(request.IdentityToken, ctx.JWTSecret)
+	if err != nil || !matchPermissions(
+		client.Permissions,
+		claims.Permissions,
+	) {
+		fmt.Println("permission mismatch")
+
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
 	json.NewEncoder(w).Encode(&ValidationResponse{
-		// verify the identity token
-		Valid: isJWTValid(request.IdentityToken, ctx.JWTSecret),
+		Valid: true,
 	})
 }
 
@@ -102,6 +117,7 @@ type RegisterResourceRequest struct {
 	ClientKey string `json:"client_key"`
 	ResourceID string `json:"resource_id"`
 	ResourceKey string `json:"resource_key"`
+	Permissions []string `json:"permissions"`
 }
 
 type RegisterResourceResponse struct {
@@ -112,8 +128,8 @@ type RegisterResourceResponse struct {
 func (ctx *RequestContext) registerResource(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 
-	request := &RegisterResourceRequest{}
 	// @@ verify that all fields are present in the request.
+	request := &RegisterResourceRequest{}
 
 	err := decoder.Decode(&request)
 	
@@ -154,6 +170,7 @@ func (ctx *RequestContext) registerResource(w http.ResponseWriter, r *http.Reque
 	resource := &Resource{
 		ID: request.ResourceID,
 		Key: string(keyHash),
+		Permissions: strings.Join(request.Permissions[:], ","),
 	}
 
 	insertErr := ctx.Creds.insertUpdateResource(resource)
@@ -170,7 +187,7 @@ func (ctx *RequestContext) registerResource(w http.ResponseWriter, r *http.Reque
 }
 
 type RegisterClientRequest struct {
-	Permissions string `json:"permissions"`
+	Permissions []string `json:"permissions"`
 }
 
 type RegisterClientResponse struct {
@@ -184,7 +201,9 @@ func (ctx *RequestContext) registerClient(w http.ResponseWriter, r *http.Request
 	err := decoder.Decode(&request)
 
 	if err != nil {
+		fmt.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
 	key := uuid.New()
@@ -192,7 +211,7 @@ func (ctx *RequestContext) registerClient(w http.ResponseWriter, r *http.Request
 
 	client := &Client{
 		Key: resourceKey,
-		Permissions: request.Permissions,
+		Permissions: strings.Join(request.Permissions[:], ","),
 		IPAddress: parseRemote(r.RemoteAddr),
 	}
 

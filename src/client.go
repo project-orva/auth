@@ -2,8 +2,8 @@ package main
 
 type Client struct {
 	Key string
-	Permissions string
 	IPAddress string
+	Permissions string
 }
 
 func (creds *DbCreds) createClientTable() error{

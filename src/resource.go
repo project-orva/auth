@@ -3,6 +3,7 @@ package main
 type Resource struct {
 	ID string `json:"resource_id"`
 	Key string `json:"resource_key"`
+	Permissions string `json:"permissions"`
 }
 
 func (creds *DbCreds) createResourceTable() error{
@@ -11,7 +12,8 @@ func (creds *DbCreds) createResourceTable() error{
 
 	sqlQuery := `CREATE TABLE IF NOT EXISTS resource (
 		ID CHAR(36) PRIMARY KEY UNIQUE NOT NULL,
-		KEY TEXT NOT NULL
+		KEY TEXT NOT NULL,
+		PERMISSIONS TEXT
 	)`
 	_, err := db.Exec(sqlQuery)
 	if err != nil {
@@ -30,7 +32,7 @@ func (creds *DbCreds) findResource(id string) (*Resource, error) {
 	row := db.QueryRow(qry, id)
 
 	resource := &Resource{}
-	if err := row.Scan(&resource.ID, &resource.Key); err != nil {
+	if err := row.Scan(&resource.ID, &resource.Key, &resource.Permissions); err != nil {
 		return nil, err
 	}
 
@@ -44,13 +46,14 @@ func (creds *DbCreds) insertUpdateResource(resource *Resource) error {
 
 	sqlQuery := `INSERT INTO RESOURCE (
 		ID,
-		KEY
+		KEY,
+		PERMISSIONS
 	) VALUES (
-		$1, $2
+		$1, $2, $3
 	) ON CONFLICT (ID) DO UPDATE
-		SET KEY = $2
+		SET KEY = $2, PERMISSIONS = $3
 	`
-	_, err := db.Exec(sqlQuery, resource.ID, resource.Key)
+	_, err := db.Exec(sqlQuery, resource.ID, resource.Key, resource.Permissions)
 
 	return err
 }

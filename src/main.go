@@ -19,7 +19,6 @@ func heath(w http.ResponseWriter, r *http.Request) {
 }
 
 type RequestContext struct {
-	HashKey string
 	JWTSecret string
 	Creds *DbCreds
 }
@@ -31,7 +30,6 @@ func main() {
 	}
 
 	ctx := &RequestContext{
-		HashKey: os.Getenv("HASH_KEY"),
 		JWTSecret: os.Getenv("JWT_SECRET"),
 		Creds: &DbCreds{
 			Host: os.Getenv("PG_HOST"),
