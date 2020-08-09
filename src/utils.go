@@ -4,7 +4,7 @@ import (
 	"strings"
 	"github.com/dgrijalva/jwt-go"
 	"errors"
-
+	"os"
 	"fmt"
 )
 
@@ -81,4 +81,13 @@ func matchPermissions(client string, resource string) bool {
 	}
 
 	return true
+}
+
+func validateEnvVar(key string) string {
+	value := os.Getenv(key)
+	if len(value) < 1 {
+		panic(fmt.Sprintf("env var '%s' is missing", key))
+	}
+
+	return value
 }

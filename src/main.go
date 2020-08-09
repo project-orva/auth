@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"log"
 	"encoding/json"
 	"net/http"
@@ -24,18 +23,15 @@ type RequestContext struct {
 }
 
 func main() {
-	err := godotenv.Load("../.env")
-	if err != nil {
-		panic("env isn't being set correctly")
-	}
+	godotenv.Load("../.env")
 
 	ctx := &RequestContext{
-		JWTSecret: os.Getenv("JWT_SECRET"),
+		JWTSecret: validateEnvVar("JWT_SECRET"),
 		Creds: &DbCreds{
-			Host: os.Getenv("PG_HOST"),
-			User: os.Getenv("PG_USER"),
-			Password: os.Getenv("PG_PASSWORD"),
-			Dbname: os.Getenv("PG_DBNAME"),
+			Host: validateEnvVar("PG_HOST"),
+			User: validateEnvVar("PG_USER"),
+			Password: validateEnvVar("PG_PASSWORD"),
+			Dbname: validateEnvVar("PG_DBNAME"),
 		},
 	}
 
