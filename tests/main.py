@@ -1,4 +1,4 @@
-import contacts
+import contracts
 from service import Service
 
 if __name__ == "__main__":
@@ -10,9 +10,9 @@ if __name__ == "__main__":
 
     auth_serivce = Service('http://localhost:5258')
 
-    contacts.validate_basic(auth_serivce, account)
+    contracts.validate_basic(auth_serivce, account)
 
     account['permissions'] = ['test123']
-    contacts.validate_basic(auth_serivce, account, ['test123'])
+    contracts.validate_basic(auth_serivce, account, ['test123'])
 
     print('contracts accepted')
